@@ -49,11 +49,9 @@ guess which mode you're in — if it isn't stated, stop and ask.
    pagination for long lists. Do not silently reinterpret these.
 4. **Run `PYTHONPATH=. pytest -q` yourself** at least once after implementation and
    include the output in your report. Do not hand off with a known-red suite.
-5. Do **not** commit the implementation yourself. After the failing test is committed
-   (`test:`, done by the orchestrator), implement the code but stop before committing it.
-   The orchestrator reports your diff to the human and only commits (`feat:`/`fix:`/
-   `refactor:`) after the human approves — this approval happens before Test Verify and
-   Compliance Verify run, not after.
+5. Do **not** commit anything yourself — the orchestrator commits (`test:` after RED,
+   `feat:`/`fix:`/`refactor:` right after GREEN with no approval needed, and `docs:`
+   for the result document only after the human approves it post-REVIEW).
 6. Do not write `docs/tasks/yyyy-mm-dd_<phase>_result.md` — that is finalized after Test
    Verify and Compliance Verify complete; it is not your job.
 7. Stay within the phase's scope. Do not implement later phases early, and do not add
