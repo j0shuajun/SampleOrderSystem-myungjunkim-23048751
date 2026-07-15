@@ -180,7 +180,16 @@ elapsed = 현재 시각 - 작업 시작 시각
 
 생산 완료 결과:
 
-- 생산된 정상 시료 수량만큼 `sample.stock`을 증가시킨다.
+- 생산된 정상 시료 수량만큼 `sample.stock`을 증가시킨다. `planned_quantity`는
+  raw 시도 횟수이므로(총생산시간 = 평균생산시간 × `planned_quantity`가 이를
+  전제한다), 완료 시점에 수율을 다시 적용해 정상 수량을 구한다:
+
+  ```text
+  produced_good_units = floor(planned_quantity * sample.yield_rate)
+  ```
+
+  `planned_quantity = ceil(shortage / yield_rate)`이므로 `produced_good_units`는
+  수학적으로 항상 `shortage` 이상이다(별도 안전재고 없이도 부족분을 보장한다).
 - 연결된 주문 상태를 `CONFIRMED`로 바꾼다.
 - 작업 상태를 완료로 바꾼다.
 
