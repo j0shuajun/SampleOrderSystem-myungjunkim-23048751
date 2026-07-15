@@ -17,6 +17,10 @@ class InvalidOrderStateError(Exception):
     """Raised when approving/rejecting an order that is not RESERVED."""
 
 
+class InsufficientStockError(Exception):
+    """Raised when releasing an order but stock is not enough (defensive check)."""
+
+
 COMMITTED_STATUSES = ("PRODUCING", "CONFIRMED")
 
 
@@ -126,4 +130,19 @@ class OrderService:
     def reject(self, order_id):
         order = self._require_reserved(order_id)
         order.status = "REJECTED"
+        return order
+
+    def release(self, order_id):
+        order = self._find_order(order_id)
+        if order is None or order.status != "CONFIRMED":
+            raise InvalidOrderStateError(
+                f"CONFIRMED 상태의 주문만 출고할 수 있습니다: {order_id}"
+            )
+        sample = self._sample_service.find(order.sample_id)
+        if sample.stock < order.quantity:
+            raise InsufficientStockError(
+                f"재고가 부족해 출고할 수 없습니다: {order_id}"
+            )
+        sample.stock -= order.quantity
+        order.status = "RELEASE"
         return order
