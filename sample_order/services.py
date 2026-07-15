@@ -13,6 +13,13 @@ class UnknownSampleError(Exception):
     """Raised when an order references a sample_id that was never registered."""
 
 
+class InvalidOrderStateError(Exception):
+    """Raised when approving/rejecting an order that is not RESERVED."""
+
+
+COMMITTED_STATUSES = ("PRODUCING", "CONFIRMED")
+
+
 class SampleService:
     def __init__(self):
         self._samples = []
@@ -31,6 +38,12 @@ class SampleService:
 
     def exists(self, sample_id):
         return any(s.sample_id == sample_id for s in self._samples)
+
+    def find(self, sample_id):
+        for s in self._samples:
+            if s.sample_id == sample_id:
+                return s
+        return None
 
 
 class OrderService:
@@ -61,3 +74,39 @@ class OrderService:
 
     def list_all(self):
         return list(self._orders)
+
+    def _find_order(self, order_id):
+        for order in self._orders:
+            if order.order_id == order_id:
+                return order
+        return None
+
+    def _available_stock(self, sample_id, excluding_order_id):
+        sample = self._sample_service.find(sample_id)
+        committed = sum(
+            order.quantity
+            for order in self._orders
+            if order.sample_id == sample_id
+            and order.order_id != excluding_order_id
+            and order.status in COMMITTED_STATUSES
+        )
+        return max(0, sample.stock - committed)
+
+    def _require_reserved(self, order_id):
+        order = self._find_order(order_id)
+        if order is None or order.status != "RESERVED":
+            raise InvalidOrderStateError(
+                f"RESERVED 상태의 주문만 승인/거절할 수 있습니다: {order_id}"
+            )
+        return order
+
+    def approve(self, order_id):
+        order = self._require_reserved(order_id)
+        available = self._available_stock(order.sample_id, excluding_order_id=order_id)
+        order.status = "CONFIRMED" if available >= order.quantity else "PRODUCING"
+        return order
+
+    def reject(self, order_id):
+        order = self._require_reserved(order_id)
+        order.status = "REJECTED"
+        return order
