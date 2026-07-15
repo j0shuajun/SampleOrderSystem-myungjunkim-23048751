@@ -135,6 +135,37 @@ def test_approving_order_blocked_by_existing_producing_order_becomes_producing()
     assert order_b.status == "PRODUCING"
 
 
+def test_approving_with_insufficient_stock_enqueues_a_production_job():
+    from sample_order.production import ProductionLine
+
+    sample_service = SampleService()
+    sample_service.register(
+        Sample(
+            sample_id="S-003",
+            name="SiC 파워기판-6인치",
+            average_production_time=0.8,
+            yield_rate=0.92,
+            stock=70,
+        )
+    )
+    production_line = ProductionLine()
+    order_service = OrderService(
+        sample_service, now=fixed_now, production_line=production_line
+    )
+    order = order_service.place_order(
+        sample_id="S-003", customer_name="삼성전자 파운드리", quantity=200
+    )
+
+    order_service.approve(order.order_id)
+
+    assert order.status == "PRODUCING"
+    queue = production_line.list_queue()
+    assert len(queue) == 1
+    assert queue[0].order_id == order.order_id
+    assert queue[0].shortage == 130
+    assert queue[0].planned_quantity == 142
+
+
 def test_rejecting_reserved_order_marks_it_rejected():
     sample_service = make_sample_service_with_s001()
     order_service = OrderService(sample_service, now=fixed_now)

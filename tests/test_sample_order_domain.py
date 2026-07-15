@@ -1,4 +1,4 @@
-from sample_order.domain import Order, Sample
+from sample_order.domain import Order, ProductionJob, Sample
 
 
 def test_sample_holds_its_fields():
@@ -31,3 +31,23 @@ def test_order_holds_its_fields():
     assert order.customer_name == "삼성전자 파운드리"
     assert order.quantity == 200
     assert order.status == "RESERVED"
+
+
+def test_production_job_holds_its_fields():
+    job = ProductionJob(
+        job_id="JOB-0001",
+        order_id="ORD-20260715-0001",
+        sample_id="S-003",
+        shortage=130,
+        planned_quantity=142,
+        status="QUEUED",
+        started_at=None,
+    )
+
+    assert job.job_id == "JOB-0001"
+    assert job.order_id == "ORD-20260715-0001"
+    assert job.sample_id == "S-003"
+    assert job.shortage == 130
+    assert job.planned_quantity == 142
+    assert job.status == "QUEUED"
+    assert job.started_at is None
