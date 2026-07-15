@@ -114,6 +114,15 @@ class OrderService:
                 self._production_line.enqueue(order, sample, shortage)
         return order
 
+    def mark_confirmed(self, order_id):
+        order = self._find_order(order_id)
+        if order is None or order.status != "PRODUCING":
+            raise InvalidOrderStateError(
+                f"PRODUCING 상태의 주문만 생산 완료로 CONFIRMED될 수 있습니다: {order_id}"
+            )
+        order.status = "CONFIRMED"
+        return order
+
     def reject(self, order_id):
         order = self._require_reserved(order_id)
         order.status = "REJECTED"
