@@ -47,9 +47,10 @@ class SampleService:
 
 
 class OrderService:
-    def __init__(self, sample_service, now=datetime.now):
+    def __init__(self, sample_service, now=datetime.now, production_line=None):
         self._sample_service = sample_service
         self._now = now
+        self._production_line = production_line
         self._orders = []
         self._daily_sequence = {}
 
@@ -103,7 +104,14 @@ class OrderService:
     def approve(self, order_id):
         order = self._require_reserved(order_id)
         available = self._available_stock(order.sample_id, excluding_order_id=order_id)
-        order.status = "CONFIRMED" if available >= order.quantity else "PRODUCING"
+        if available >= order.quantity:
+            order.status = "CONFIRMED"
+        else:
+            order.status = "PRODUCING"
+            if self._production_line is not None:
+                sample = self._sample_service.find(order.sample_id)
+                shortage = order.quantity - available
+                self._production_line.enqueue(order, sample, shortage)
         return order
 
     def reject(self, order_id):
