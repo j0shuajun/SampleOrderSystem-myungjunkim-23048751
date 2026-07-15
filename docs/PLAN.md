@@ -14,6 +14,10 @@
 3. 콘솔 메뉴
 4. 더미 데이터와 시연 편의 기능
 
+각 Phase는 CLAUDE.md 2장의 "Phase 진행 흐름도"(doc-consistency-verifier → plan 문서
+→ 사람 승인 #1 → plan 커밋 → 테스트 → 구현 → 두 검증 → 사람 승인 #2 → push)를
+그대로 따른다.
+
 ## 2. 권장 구현 언어와 구조
 
 구현 언어는 **Python**으로 확정한다.
