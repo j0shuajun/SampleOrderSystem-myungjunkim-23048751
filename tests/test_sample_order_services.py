@@ -7,7 +7,9 @@ from sample_order.domain import Order, Sample
 from sample_order.services import (
     DuplicateSampleError,
     InsufficientStockError,
+    InvalidOrderQuantityError,
     InvalidOrderStateError,
+    InvalidSampleError,
     OrderService,
     SampleService,
     UnknownSampleError,
@@ -51,6 +53,37 @@ def test_duplicate_sample_id_is_rejected():
         service.register(make_sample(sample_id="S-001"))
 
 
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("yield_rate", 0),
+        ("yield_rate", -0.1),
+        ("yield_rate", 1.1),
+        ("average_production_time", 0),
+        ("average_production_time", -1),
+        ("stock", -1),
+    ],
+)
+def test_registering_sample_with_invalid_field_is_rejected(field, value):
+    service = SampleService()
+    sample = make_sample()
+    setattr(sample, field, value)
+
+    with pytest.raises(InvalidSampleError):
+        service.register(sample)
+
+
+def test_registering_sample_with_valid_boundary_values_succeeds():
+    service = SampleService()
+    sample = make_sample()
+    sample.yield_rate = 1.0  # 상한 포함
+    sample.stock = 0  # 고갈 상태로 등록 가능
+
+    service.register(sample)  # 예외 없이 통과해야 함
+
+    assert service.find("S-001").stock == 0
+
+
 def fixed_now():
     return datetime(2026, 7, 15, 9, 0, 0)
 
@@ -76,6 +109,19 @@ def test_placing_an_order_creates_a_reserved_order_with_formatted_id():
     assert re.fullmatch(r"ORD-\d{8}-\d{4}", order.order_id)
     assert order.order_id == "ORD-20260715-0001"
     assert order in order_service.list_all()
+
+
+@pytest.mark.parametrize("quantity", [0, -5])
+def test_placing_an_order_with_invalid_quantity_fails(quantity):
+    sample_service = make_sample_service_with_s001()
+    order_service = OrderService(sample_service, now=fixed_now)
+
+    with pytest.raises(InvalidOrderQuantityError):
+        order_service.place_order(
+            sample_id="S-001", customer_name="삼성전자 파운드리", quantity=quantity
+        )
+
+    assert order_service.list_all() == []
 
 
 def test_placing_an_order_for_unknown_sample_fails():
