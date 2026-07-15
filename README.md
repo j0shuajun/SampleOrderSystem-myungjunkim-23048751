@@ -43,6 +43,14 @@ CONFIRMED -> RELEASE    (출고 완료)
 - 데이터 저장: JSON 파일 (재실행 후에도 데이터 유지)
 - 실행 방식: 콘솔(CLI) 메뉴 기반
 
+## 설치 및 테스트 실행
+
+```bash
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+PYTHONPATH=. ./.venv/bin/pytest -q
+```
+
 ## 문서
 
 - [`docs/PRD.md`](docs/PRD.md): 왜 이 시스템이 필요한지, 대표 사용자 흐름
