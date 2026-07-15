@@ -1,9 +1,12 @@
 """Single FIFO production line. No console input/output here."""
 
 import math
+import re
 from datetime import datetime
 
 from sample_order.domain import ProductionJob
+
+_JOB_ID_PATTERN = re.compile(r"^JOB-(\d+)$")
 
 
 class ProductionNotYetCompleteError(Exception):
@@ -44,6 +47,22 @@ class ProductionLine:
 
     def list_queue(self):
         return [job for job in self._jobs if job.status == "QUEUED"]
+
+    def list_all(self):
+        """Return every job regardless of status (used for persistence)."""
+        return list(self._jobs)
+
+    def replace_all(self, jobs):
+        """Restore the full job list and recompute the next job number from
+        existing job_ids (JOB-NNNN) so future IDs do not collide."""
+        self._jobs = list(jobs)
+        max_number = 0
+        for job in self._jobs:
+            match = _JOB_ID_PATTERN.match(job.job_id)
+            if match is None:
+                continue
+            max_number = max(max_number, int(match.group(1)))
+        self._next_job_number = max_number + 1 if max_number else 1
 
     def _current_job(self):
         for job in self._jobs:

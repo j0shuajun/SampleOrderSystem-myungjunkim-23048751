@@ -1,8 +1,11 @@
 """Sample and order services. No console input/output here."""
 
+import re
 from datetime import datetime
 
 from sample_order.domain import Order
+
+_ORDER_ID_PATTERN = re.compile(r"^ORD-(\d{8})-(\d+)$")
 
 
 class DuplicateSampleError(Exception):
@@ -48,6 +51,10 @@ class SampleService:
             if s.sample_id == sample_id:
                 return s
         return None
+
+    def replace_all(self, samples):
+        """Restore the full sample list from persisted storage (no dup check)."""
+        self._samples = list(samples)
 
 
 class OrderService:
@@ -146,3 +153,17 @@ class OrderService:
         sample.stock -= order.quantity
         order.status = "RELEASE"
         return order
+
+    def replace_all(self, orders):
+        """Restore the full order list and recompute the daily sequence counters
+        from existing order_ids (ORD-YYYYMMDD-NNNN) so future IDs do not collide."""
+        self._orders = list(orders)
+        self._daily_sequence = {}
+        for order in self._orders:
+            match = _ORDER_ID_PATTERN.match(order.order_id)
+            if match is None:
+                continue
+            date_str, sequence_str = match.groups()
+            sequence = int(sequence_str)
+            if sequence > self._daily_sequence.get(date_str, 0):
+                self._daily_sequence[date_str] = sequence
