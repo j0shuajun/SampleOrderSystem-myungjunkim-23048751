@@ -119,7 +119,7 @@ def test_approving_order_blocked_by_existing_producing_order_becomes_producing()
     order_service = OrderService(sample_service, now=fixed_now)
     order_service._orders.append(
         Order(
-            order_id="ORD-20260715-0001",
+            order_id="ORD-20260714-0001",
             sample_id="S-003",
             customer_name="LG이노텍",
             quantity=100,
