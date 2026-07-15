@@ -42,9 +42,17 @@ SampleOrderSystem-myungjunkim-23048751/
 │   ├── test_sample_order_services.py
 │   ├── test_sample_order_repository.py
 │   ├── test_sample_order_production.py
-│   └── test_sample_order_monitoring.py
+│   ├── test_sample_order_monitoring.py
+│   └── test_sample_order_cli.py
+├── requirements.txt
+├── requirements-dev.txt
 └── main.py
 ```
+
+콘솔 화면(상태 배지 색상, 테이블, 페이지네이션)은 `rich` 라이브러리로 구현한다.
+`requirements.txt`에 `rich`를, `requirements-dev.txt`에 `pytest`를 등록한다. `rich`
+렌더링은 `cli.py` 계층에만 두고, 도메인 모듈(`domain.py`/`services.py`/`production.py`/
+`monitoring.py`)은 `rich`에 의존하지 않는다.
 
 ## 3. TDD 단계
 
@@ -52,7 +60,8 @@ SampleOrderSystem-myungjunkim-23048751/
 
 목표:
 
-- 실행 환경과 테스트 환경을 만든다.
+- 실행 환경과 테스트 환경을 만든다 (`requirements.txt`/`requirements-dev.txt`에
+  `rich`, `pytest` 등록).
 - README에 실행 방법을 적는다.
 
 검증:
@@ -174,6 +183,7 @@ SampleOrderSystem-myungjunkim-23048751/
 
 - 필수 메뉴를 콘솔에서 실행할 수 있게 한다.
 - 도메인 로직과 입출력 경계를 분리한다.
+- `rich`로 상태 배지 컬러, 테이블, 페이지네이션을 구현한다 (SPEC.md 11장).
 
 대표 검증:
 

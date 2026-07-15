@@ -29,6 +29,10 @@ PoC 4개 저장소에서 검증한 구조와 도구를 참고하거나 복사해
 `../Day17/harness` PoC에서 검증한 4-서브에이전트 패턴을 이 프로젝트 도메인에 맞게
 가져온 것이다 (`.claude/agents/` 참고).
 
+오케스트레이션은 **수동/대화형**으로 진행한다. Phase 자동 일괄 처리(스크립트로
+Phase 0~9를 한 번에 돌리는 방식)는 쓰지 않는다 — Phase 하나씩 아래 서브에이전트를
+순서대로 호출하고, 각 단계 결과(PASS/FAIL)를 사람이 확인한 뒤 다음으로 넘어간다.
+
 기본 사이클은 **RED → GREEN → REVIEW**이며, 각 단계는 아래 서브에이전트가 담당한다.
 
 ### RED
@@ -128,14 +132,26 @@ test: add approval scenario for insufficient stock
 feat: approve orders into production queue when stock is short
 ```
 
-## 6. 테스트 규칙
+## 6. Plan/Result 문서 규칙
+
+- `ai-action`은 Phase 착수 전에 `docs/tasks/yyyy-mm-dd_<phase-summary>_plan.md`를
+  작성한다. Test Verify와 Compliance Verify를 모두 마친 뒤에는
+  `docs/tasks/yyyy-mm-dd_<phase-summary>_result.md`를 작성한다.
+- `docs/PRD.md`/`docs/SPEC.md`/`docs/PLAN.md`(전체 프로젝트의 단일 진실 소스)와
+  구분하기 위해, Phase별 plan/result는 반드시 `docs/tasks/` 하위에 둔다 (`docs/` 바로
+  아래에 두지 않는다).
+- plan/result 문서 본문은 한국어로 작성하고, 기술 용어는 원어를 유지해도 된다.
+- 코드 변경이 없는 작업(문서 논의, PRD/SPEC/PLAN 자체 수정)은 plan/result 문서를
+  만들지 않는다.
+
+## 7. 테스트 규칙
 
 - 비즈니스 로직은 테스트를 먼저 작성한다.
 - 콘솔 UI보다 도메인 서비스, 상태 전이, 저장소, 생산 큐 계산을 우선 테스트한다.
 - 기본 테스트 명령은 프로젝트 언어와 도구 확정 후 `README.md`와 `docs/PLAN.md`에 기록한다.
 - 테스트 데이터는 직접 작성하거나 DummyDataGenerator PoC의 구조를 참고해 seed로 만든다.
 
-## 7. 완료 기준
+## 8. 완료 기준
 
 - 시료 등록/조회/검색이 가능하다.
 - 주문 접수/승인/거절이 가능하다.
