@@ -19,7 +19,9 @@ from sample_order.production import (
 from sample_order.services import (
     DuplicateSampleError,
     InsufficientStockError,
+    InvalidOrderQuantityError,
     InvalidOrderStateError,
+    InvalidSampleError,
     UnknownSampleError,
 )
 
@@ -266,7 +268,7 @@ def _menu_sample(sample_service):
 
 def _handle_sample_register(sample_service):
     try:
-        sample_id = _prompt("시료 ID > ")
+        sample_id = _prompt("시료 ID (예: S-001) > ")
         name = _prompt("이름 > ")
         average_production_time = _prompt_float("평균 생산시간(min/ea) > ")
         yield_rate = _prompt_float("수율(0~1) > ")
@@ -285,7 +287,7 @@ def _handle_sample_register(sample_service):
                 stock=stock,
             )
         )
-    except DuplicateSampleError as exc:
+    except (DuplicateSampleError, InvalidSampleError) as exc:
         _render_error(exc)
         return
     _render_message(f"등록 완료: {sample.sample_id} ({sample.name})")
@@ -302,7 +304,7 @@ def _menu_order_place(order_service):
 
     try:
         order = order_service.place_order(sample_id, customer_name, quantity)
-    except UnknownSampleError as exc:
+    except (UnknownSampleError, InvalidOrderQuantityError) as exc:
         _render_error(exc)
         return
     _render_message(f"접수 완료: {order.order_id} {_badge(order.status)}")

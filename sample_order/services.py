@@ -24,7 +24,28 @@ class InsufficientStockError(Exception):
     """Raised when releasing an order but stock is not enough (defensive check)."""
 
 
+class InvalidSampleError(Exception):
+    """Raised when a sample's field values violate SPEC.md's declared ranges."""
+
+
+class InvalidOrderQuantityError(Exception):
+    """Raised when an order quantity is not a positive integer."""
+
+
 COMMITTED_STATUSES = ("PRODUCING", "CONFIRMED")
+
+
+def _validate_sample(sample):
+    if not (0 < sample.yield_rate <= 1):
+        raise InvalidSampleError(
+            f"수율은 0보다 크고 1 이하이어야 합니다: {sample.yield_rate}"
+        )
+    if sample.average_production_time <= 0:
+        raise InvalidSampleError(
+            f"평균 생산시간은 0보다 커야 합니다: {sample.average_production_time}"
+        )
+    if sample.stock < 0:
+        raise InvalidSampleError(f"재고는 0 이상이어야 합니다: {sample.stock}")
 
 
 class SampleService:
@@ -32,6 +53,7 @@ class SampleService:
         self._samples = []
 
     def register(self, sample):
+        _validate_sample(sample)
         if any(s.sample_id == sample.sample_id for s in self._samples):
             raise DuplicateSampleError(f"이미 등록된 시료 ID입니다: {sample.sample_id}")
         self._samples.append(sample)
@@ -72,6 +94,8 @@ class OrderService:
         return f"ORD-{date_str}-{sequence:04d}"
 
     def place_order(self, sample_id, customer_name, quantity):
+        if quantity < 1:
+            raise InvalidOrderQuantityError(f"주문 수량은 1 이상이어야 합니다: {quantity}")
         if not self._sample_service.exists(sample_id):
             raise UnknownSampleError(f"등록되지 않은 시료 ID입니다: {sample_id}")
         order = Order(
