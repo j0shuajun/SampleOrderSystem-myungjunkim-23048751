@@ -7,7 +7,11 @@ such decision is delegated to the injected service instances (SampleService/
 OrderService/ProductionLine/MonitoringService).
 """
 
+from datetime import datetime
+
+from rich import box as rich_box
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from sample_order.domain import Sample
@@ -42,15 +46,15 @@ _INVENTORY_COLORS = {
 }
 
 _PAGE_SIZE = 10
+_BAR_WIDTH = 10
 
-_MAIN_MENU_TEXT = """\
-==============================================
- 반도체 시료 생산주문관리 시스템
-----------------------------------------------
+_LOGO_TITLE = "⬡⬢⬡  S-Semi  ⬡⬢⬡"
+_LOGO_SUBTITLE = "반도체 시료 생산주문관리 시스템"
+
+_MENU_TEXT = """\
 [1] 시료 관리   [2] 시료 주문   [3] 주문 승인/거절
 [4] 모니터링    [5] 생산 라인 조회   [6] 출고 처리
-[0] 종료
-=============================================="""
+[0] 종료"""
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +81,31 @@ def _inventory_badge(state):
     return f"[{color}]{state}[/{color}]"
 
 
+def _bar(ratio, width=_BAR_WIDTH):
+    """Render a simple block-character progress bar for the given 0.0-1.0 ratio."""
+    ratio = max(0.0, min(1.0, ratio))
+    filled = round(ratio * width)
+    return "█" * filled + "░" * (width - filled)
+
+
+def _coverage_ratio(stock, unshipped_quantity):
+    """How much of outstanding demand current stock covers, capped at 100%."""
+    if unshipped_quantity <= 0:
+        return 1.0 if stock > 0 else 0.0
+    return min(1.0, stock / unshipped_quantity)
+
+
+def _job_progress_ratio(job, sample, now):
+    """How far a job has progressed toward its total production time."""
+    if job.started_at is None:
+        return 0.0
+    total_minutes = sample.average_production_time * job.planned_quantity
+    if total_minutes <= 0:
+        return 1.0
+    elapsed_minutes = (now() - job.started_at).total_seconds() / 60
+    return max(0.0, min(1.0, elapsed_minutes / total_minutes))
+
+
 def _paginate(items, page, page_size=_PAGE_SIZE):
     """Slice items for the given 1-indexed page.
 
@@ -92,8 +121,30 @@ def _paginate(items, page, page_size=_PAGE_SIZE):
     return page_items, has_more, remaining
 
 
-def _render_main_menu():
-    _console.print(_MAIN_MENU_TEXT)
+def _render_logo():
+    banner = f"[bold cyan]{_LOGO_TITLE}[/bold cyan]\n[dim]{_LOGO_SUBTITLE}[/dim]"
+    _console.print(
+        Panel(banner, box=rich_box.DOUBLE, border_style="cyan", padding=(0, 3))
+    )
+
+
+def _render_system_status(sample_service, order_service, production_line):
+    samples = sample_service.list_all()
+    total_stock = sum(sample.stock for sample in samples)
+    order_count = len(order_service.list_all())
+    queued_count = len(production_line.list_queue())
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    _console.print(
+        f"[dim]시스템 현황  {now_str}[/dim]\n"
+        f"등록 시료 [bold]{len(samples)}[/bold]종   총 재고 [bold]{total_stock:,}[/bold] ea   "
+        f"전체 주문 [bold]{order_count}[/bold]건   생산라인 [bold]{queued_count}[/bold]건 대기"
+    )
+
+
+def _render_main_menu(sample_service, order_service, production_line):
+    _render_logo()
+    _render_system_status(sample_service, order_service, production_line)
+    _console.print(_MENU_TEXT)
 
 
 def _render_message(message):
@@ -157,26 +208,33 @@ def _render_inventory_status(statuses):
     table.add_column("재고")
     table.add_column("미출고 수량")
     table.add_column("상태")
+    table.add_column("잔여율")
     for status in statuses:
+        ratio = _coverage_ratio(status.stock, status.unshipped_quantity)
+        color = _INVENTORY_COLORS.get(status.state, "white")
         table.add_row(
             status.sample_id,
             status.name,
             str(status.stock),
             str(status.unshipped_quantity),
             _inventory_badge(status.state),
+            f"[{color}]{_bar(ratio)}[/{color}] {round(ratio * 100)}%",
         )
     _console.print(table)
 
 
-def _render_production_overview(jobs):
+def _render_production_overview(jobs, sample_service, now=datetime.now):
     in_progress = [job for job in jobs if job.status == "IN_PROGRESS"]
     queued = [job for job in jobs if job.status == "QUEUED"]
 
     if in_progress:
         current = in_progress[0]
+        sample = sample_service.find(current.sample_id)
+        ratio = _job_progress_ratio(current, sample, now)
         _console.print(
             f"현재 진행 중: {current.job_id} ({current.sample_id}, "
-            f"계획 {current.planned_quantity}개, 시작 {current.started_at})"
+            f"계획 {current.planned_quantity}개, 시작 {current.started_at})\n"
+            f"진행률: [magenta]{_bar(ratio)}[/magenta] {round(ratio * 100)}%"
         )
     else:
         _console.print("현재 진행 중: 없음")
@@ -348,7 +406,7 @@ def _menu_monitoring(monitoring_service):
 
 def _menu_production(sample_service, order_service, production_line):
     while True:
-        _render_production_overview(production_line.list_all())
+        _render_production_overview(production_line.list_all(), sample_service)
         _render_message("[1] 다음 작업 시작  [2] 완료 처리  [0] 이전 메뉴")
         choice = _prompt("선택 > ").strip()
         if choice == "0":
@@ -413,7 +471,7 @@ def run(
 ):
     """Run the 6+1 main menu loop until the user chooses to exit."""
     while True:
-        _render_main_menu()
+        _render_main_menu(sample_service, order_service, production_line)
         choice = _prompt("선택 > ").strip()
         if choice == "0":
             _render_message("저장 후 종료합니다.")
