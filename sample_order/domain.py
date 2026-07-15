@@ -10,3 +10,12 @@ class Sample:
     average_production_time: float
     yield_rate: float
     stock: int
+
+
+@dataclass
+class Order:
+    order_id: str
+    sample_id: str
+    customer_name: str
+    quantity: int
+    status: str
