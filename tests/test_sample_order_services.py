@@ -6,6 +6,7 @@ import pytest
 from sample_order.domain import Order, Sample
 from sample_order.services import (
     DuplicateSampleError,
+    InsufficientStockError,
     InvalidOrderStateError,
     OrderService,
     SampleService,
@@ -188,3 +189,42 @@ def test_approving_a_non_reserved_order_fails():
 
     with pytest.raises(InvalidOrderStateError):
         order_service.approve(order.order_id)
+
+
+def test_releasing_confirmed_order_deducts_stock_and_marks_release():
+    sample_service = make_sample_service_with_s001()  # stock=480
+    order_service = OrderService(sample_service, now=fixed_now)
+    order = order_service.place_order(
+        sample_id="S-001", customer_name="삼성전자 파운드리", quantity=150
+    )
+    order_service.approve(order.order_id)  # 가용재고 충분 -> CONFIRMED
+
+    order_service.release(order.order_id)
+
+    assert order.status == "RELEASE"
+    assert sample_service.find("S-001").stock == 480 - 150
+
+
+def test_releasing_a_non_confirmed_order_fails():
+    sample_service = make_sample_service_with_s001()
+    order_service = OrderService(sample_service, now=fixed_now)
+    order = order_service.place_order(
+        sample_id="S-001", customer_name="삼성전자 파운드리", quantity=50
+    )
+    # 아직 RESERVED 상태 (승인 전)
+
+    with pytest.raises(InvalidOrderStateError):
+        order_service.release(order.order_id)
+
+
+def test_releasing_confirmed_order_with_insufficient_stock_fails_defensively():
+    sample_service = make_sample_service_with_s001()  # stock=480
+    order_service = OrderService(sample_service, now=fixed_now)
+    order = order_service.place_order(
+        sample_id="S-001", customer_name="삼성전자 파운드리", quantity=100
+    )
+    order_service.approve(order.order_id)  # CONFIRMED
+    sample_service.find("S-001").stock = 10  # 인위적으로 재고를 부족하게 만듦
+
+    with pytest.raises(InsufficientStockError):
+        order_service.release(order.order_id)
