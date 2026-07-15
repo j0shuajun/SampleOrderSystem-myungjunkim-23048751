@@ -223,11 +223,19 @@ def _prompt(label):
 
 
 def _prompt_int(label):
-    return int(_prompt(label))
+    raw = _prompt(label)
+    try:
+        return int(raw)
+    except ValueError:
+        raise ValueError(f"숫자만 입력할 수 있습니다: {raw}") from None
 
 
 def _prompt_float(label):
-    return float(_prompt(label))
+    raw = _prompt(label)
+    try:
+        return float(raw)
+    except ValueError:
+        raise ValueError(f"숫자만 입력할 수 있습니다: {raw}") from None
 
 
 # ---------------------------------------------------------------------------
